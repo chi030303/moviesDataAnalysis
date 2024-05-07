@@ -1,0 +1,4 @@
+,adult,belongs_to_collection,budget,genres,homepage,id,imdb_id,original_language,original_title,overview,popularity,poster_path,production_companies,production_countries,release_date,revenue,runtime,spoken_languages,status,tagline,title,video,vote_average,vote_count
+column type,object,object,object,object,object,object,object,object,object,object,object,object,object,object,object,float64,float64,object,object,object,object,object,float64,float64
+null values,0,40972,0,0,37684,0,17,11,0,954,5,386,3,3,87,6,263,6,87,25054,6,6,6,6
+null values (%),0.0,90.11569084590683,0.0,0.0,82.88391325386003,0.0,0.03739057757445124,0.024193903136409626,0.0,2.0982712356486166,0.010997228698368012,0.8489860555140104,0.006598337219020807,0.006598337219020807,0.19135177935160338,0.013196674438041614,0.5784542295341575,0.013196674438041614,0.19135177935160338,55.10491356178243,0.013196674438041614,0.013196674438041614,0.013196674438041614,0.013196674438041614

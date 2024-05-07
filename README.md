@@ -1,2 +1,54 @@
 # moviesDataAnalysis
 对kaggle上的电影数据集进行特征分析和特征融合
+
+# 数据集结构
+- credits.csv
+	- cast：主演和配角的名字
+	- crew：导演、编辑、作曲家、作家等姓名。
+	- id：每部电影的唯一标识符
+- movies_metadata.csv
+	- adult：是否是成人片（待分析）
+	- belongs_to_collection：电影所属的系列
+		- 包括id(系列id)、name系列名、海报URL、背景图URL
+	- budget：经费
+	- genre：电影类型
+	- gomepage：到电影主页的URL链接
+	- id：电影id，对应credits.csv
+	- imdb_id：与imdb对应的id（没用）
+	- original_language：电影制作语言
+	- original_title：翻译前的原标题
+	- overview：电影简介
+	- popularity：流行度，用数字量化了（可以用来推荐，历史热门电影）
+	- poster_path：电影海报URL
+	- production_companies：制片公司
+	- production_countries：制片国
+	- release_date：发布日期
+	- revenue：收入
+	- runtime：电影时长
+	- spoken_language：播放语言
+	- status：状态
+		- released or rumored?
+		- 待分析
+	- tagline：电影标语
+	- title：电影名
+	- video：是否有视频流？待确认
+	- vote_average：平均分
+	- vote_count：打分人数
+- keywords.csv
+	- id：电影id
+	- keywords：
+		- id：用户id
+		- name：用户对电影的关键词（可能还需要一个情感分析？）
+- links.csv（这个数据集应该没用）
+	- 电影id、imdbId、tmdbId的映射关系
+- ratings.csv
+	- userId：用户ID
+	- movieId：电影ID
+	- rating：用户对该电影的评分
+	- timestamp：时间戳，用户打分的时间
+
+# 分析需求
+- 各数据集缺省值、异常值
+- 各字段值的统计，看看数据分布具体情况
+    - 包括一些字段的取值类型，评分的分布情况等
+- 找找哪些特征可以融合
