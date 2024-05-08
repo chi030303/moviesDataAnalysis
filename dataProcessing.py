@@ -1,5 +1,6 @@
 import pandas as pd
 
+# 删除不需要的列
 def clean_and_export_metadata(filepath, columns_to_drop, output_filepath='movies_metadata.csv'):
     """
     清理元数据，通过删除指定的列，并将清理后的数据输出到一个 CSV 文件中。
@@ -76,29 +77,37 @@ def extract_sample(filepath,output_filepath):
 
 # 处理credits.csv文件
 # 需要把演员分割了，需要把导演找出来
-def handle_credits(filepath,output_filepath):
-    credits = pd.read_csv(filepath)
+def handle_credits(filepath, output_filepath):
+    try:
+        credits = pd.read_csv(filepath)
 
-    # 在 crew 列中查找所有 job 属性为 "Director" 的数据条目
-    director_data = []
-    actor_data = []
-    crew_dicts = credits['crew'].apply(lambda x: eval(x))
-    cast_dicts = credits['cast'].apply(lambda x: eval(x))
-    for idx, credit_member in enumerate(crew_dicts):
-        director_names = '|'.join([member['name'] for member in credit_member if member['job'] == 'Director'])
+        # 初始化导演、演员和角色列表
+        director_list = []
+        actor_list = []
+        character_list = []
 
-        # 仅获取前15个演员的名字和角色
-        actors = [member for member in cast_dicts[idx]][:15]
-        actor_names = '|'.join([member['name'] for member in actors])
-        character_names = '|'.join([member['character'] for member in actors])
+        # 处理 crew 列中的导演信息
+        for crew_data in credits['crew']:
+            crew_data = eval(crew_data)  # 将字符串转换为列表
+            directors = [member['name'] for member in crew_data if member['job'] == 'Director']
+            director_list.append('|'.join(directors) if directors else '')  # 如果没有导演，将其设为空字符串
 
-        director_data.append({'id': credits.loc[idx, 'id'], 'director': director_names, 'actor': actor_names, 'character': character_names})
+        # 处理 cast 列中的演员和角色信息，仅获取前15个演员
+        for cast_data in credits['cast']:
+            cast_data = eval(cast_data)  # 将字符串转换为列表
+            actors = [member['name'] for member in cast_data[:15]]
+            characters = [member['character'] for member in cast_data[:15]]
+            actor_list.append('|'.join(actors))
+            character_list.append('|'.join(characters))
 
-    # 创建包含导演名字和对应 ID 的 DataFrame
-    credits_df = pd.DataFrame(director_data)
+        # 创建包含导演、演员和角色信息的 DataFrame
+        credits_df = pd.DataFrame({'id': credits['id'], 'director': director_list, 'actor': actor_list, 'character': character_list})
 
-    # 将导演信息写入到新的 CSV 文件中
-    credits_df.to_csv(output_filepath, index=False)
+        # 将导演、演员和角色信息写入到新的 CSV 文件中
+        credits_df.to_csv(output_filepath, index=False)
+
+    except Exception as e:
+        print("An error occurred while handling credits.csv:", e)
 
 # 处理keywords.csv数据集
 def handle_keywords(filepath,output_filepath):
@@ -117,20 +126,25 @@ def handle_keywords(filepath,output_filepath):
     # 保存结果到新的CSV文件
     keyword_df.to_csv(output_filepath, index=False)
 
-def merge_datasets(filepath):
+# 将演员、导演数据合并到电影数据集里
+def concat_datasets(metadata_filepath, credits_filepath):
     try:
-        metadata = pd.read_csv(filepath)
-        # 读取 credits 数据
-        handle_credits("../archive/credits.csv","./credits.csv")
+        # 读取 metadata 和 credits 数据集
+        metadata = pd.read_csv(metadata_filepath)
+        handle_credits(credits_filepath, "./credits.csv")
         credits = pd.read_csv("./credits.csv")
 
-        # 将 credits 数据集中的 'id' 列转换为与 metadata 数据集中 'id' 列相同的数据类型
-        credits['id'] = credits['id'].astype(metadata['id'].dtype)
+        # 选择 credits 数据集中的 director、actor 和 character 列
+        credits_selected = credits[['id', 'director', 'actor', 'character']]
 
-        # 将演员、饰演角色、导演合并到电影数据集中
-        metadata = metadata.merge(credits, on='id')
+        # 使用 concat 函数将 metadata 数据集和 credits 中选定的列堆叠在一起
+        merged_data = pd.concat([metadata, credits_selected], axis=1)
+
+        # 保存合并后的数据集到文件
+        merged_data.to_csv("./movies.csv", index=False)
+
     except Exception as e:
-        print("An error occurred while processing credits.csv:", e)
+        print("An error occurred while concatenating datasets:", e)
 
 if __name__ == "__main__":
     # 提取样本试验函数功能
@@ -138,5 +152,8 @@ if __name__ == "__main__":
 
     # 处理数据，删除多余字段，对一些字段值进行分割；并将处理后的数据写入原文件
     data_processing("../archive/movies_metadata.csv","./movies.csv")
-    # handle_keywords("../archive/keywords.csv","./keywords.csv")
-    merge_datasets("./movies.csv")
+    # 将movies数据集与credits数据集合并
+    concat_datasets("./movies.csv","../archive/credits.csv")
+    # 提取keywords，生成keywords数据集
+    handle_keywords("../archive/keywords.csv","./keywords.csv")
+    
