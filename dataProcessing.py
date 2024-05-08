@@ -66,7 +66,7 @@ def data_processing(filepath, output_filepath):
         # 提取poster_path和对应的id，写入另一个文件，并删除poster_path列
         extract_and_remove_column(metadata, 'poster_path', "./poster_path.csv")
 
-        new_column_order = ['id', 'title', 'genres','original_language','overview','runtime','release_date','production_companies','production_countries','status','budget','revenue','popularity','vote_count','vote_average','original_title','spoken_languages']
+        new_column_order = ['id', 'title', 'original_title', 'genres','original_language','spoken_languages','overview','runtime','release_date','production_companies','production_countries','status','budget','revenue','popularity','vote_count','vote_average']
 
         # 使用 reindex 方法重新排列列顺序
         metadata = metadata.reset_index(drop=True)  # 重置索引，确保连续

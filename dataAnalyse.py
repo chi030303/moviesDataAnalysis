@@ -145,58 +145,32 @@ def metadata_analyse(filepath):
 
     time_language_histogram(metadata)
 
-def check_genres(filepath):
-    # 读取数据集
+# 分析'genres','production_countries','production_companies','spoken_languages'字段的数据
+def check_data(filepath, columns):
+    # 读取数据集，指定分隔符为 "|"
     metadata = pd.read_csv(filepath, low_memory=False)
 
-    # 获取原始国家/地区列表
-    countries_list = metadata['original_countries'].dropna().unique()
+    # 遍历每一列
+    for column in columns:
+        # 统计每个独立的值出现的次数
+        data_counts = {}
 
-    # 初始化一个空字典，用于存储每个国家/地区的计数
-    countries_counts = {}
+        # 遍历每一行
+        for index, row in metadata.iterrows():
+            # 将当前行的数据转换为字符串类型，然后拆分成单个值，并去重
+            data_list = str(row[column]).split("|")
+            # 统计每个值的出现次数
+            for data in data_list:
+                data_counts[data] = data_counts.get(data, 0) + 1
 
-    # 统计每个独立的国家/地区出现的次数
-    for country in countries_list:
-        countries_counts[country] = metadata['original_countries'].str.contains(country).sum()
+        # 打印每个值的计数
+        for data, count in data_counts.items():
+            print(f"{data}: {count}")
 
-    # 打印每个国家/地区的计数
-    for country, count in countries_counts.items():
-        print(f"{country}: {count}")
+        print("Total unique values:", len(data_counts))
 
-    print("Total unique countries/regions:", len(countries_counts))
-
-def check_test(filepath):
-    # 读取 CSV 文件到 DataFrame
-    df = pd.read_csv(filepath, na_values=[pd.NA, np.nan])
-    
-    # 将 NaN 值替换为一个默认值，比如空列表
-    df['production_countries'].fillna('[]', inplace=True)
-
-    # 将字符串转换为字典
-    df['production_countries'] = df['production_countries'].apply(ast.literal_eval)
-
-    # 获取 'name' 字段，添加异常处理
-    def get_country_name(x):
-        try:
-            return x[0]['name']
-        except (IndexError, TypeError):
-            return None
-
-    df['name'] = df['production_countries'].apply(get_country_name)
-
-    # 打印结果
-    print(df['name'])
-
-    # 去重并统计每个类别的数量
-    unique_countries = df['name'].dropna().unique()
-    country_counts = df['name'].value_counts()
-
-    # 输出统计结果
-    print("不同国家/地区的数量：", len(unique_countries))
-    print("各国家/地区的统计（前二十）：")
-    print(country_counts.head(20))
-    
 if __name__ == "__main__":
     # metadata_analyse("../archive/movies_metadata.csv")
-    check_test("./movies.csv")
+    columns = ['genres','production_countries','spoken_languages']
+    check_data("./movies.csv",columns)
     
