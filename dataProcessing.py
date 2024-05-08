@@ -1,4 +1,6 @@
 import pandas as pd
+import ast
+import numpy as np
 
 # 删除不需要的列
 def clean_and_export_metadata(filepath, columns_to_drop, output_filepath='movies_metadata.csv'):
@@ -14,18 +16,17 @@ def clean_and_export_metadata(filepath, columns_to_drop, output_filepath='movies
         输出清理后的元数据 CSV 文件的文件路径。默认为 'cleaned_metadata.csv'。
     """
     # 读取数据
-    metadata = pd.read_csv(filepath)
+    metadata = pd.read_csv(filepath,low_memory=False)
     
     # 删除指定的列
     metadata_cleaned = metadata.drop(columns=columns_to_drop, errors='ignore')
     return metadata_cleaned
 
-# 提取并分割字段下的多个值
 def split_data(data, columns):
     for column in columns:
         try:
             # 将字段的字符串转换为列表
-            data[column] = data[column].apply(lambda x: [entry['name'] for entry in eval(x)])
+            data[column] = data[column].apply(lambda x: [] if pd.isna(x) else [entry['name'] for entry in eval(str(x))])
             # 将列表中的字符串连接起来，用'|'分隔
             data[column] = data[column].apply(lambda x: '|'.join(x))
         except Exception as e:
@@ -40,26 +41,49 @@ def extract_and_remove_column(metadata, column_name, output_filepath):
     # 删除poster_path列
     metadata.drop(columns=[column_name], inplace=True)
 
+# 提取属性
+def extract_attributes(filepath, columns):
+    try:
+        # 读取 CSV 文件到 DataFrame
+        df = pd.read_csv(filepath, na_values=[pd.NA, np.nan])
+        
+        # 提取每行的属性
+        attributes = {}
+        for column in columns:
+            attributes[column] = df[column].apply(lambda x: eval(x) if isinstance(x, str) else x)
+
+        return df, attributes
+    
+    except Exception as e:
+        print(f"Error occurred while processing file '{filepath}': {e}")
+        return None, None
+
 def data_processing(filepath, output_filepath):
     try:
-        metadata = pd.read_csv(filepath)
-        metadata = clean_and_export_metadata(filepath,['belongs_to_collection', 'homepage', 'tagline', 'video', 'adult', 'imdb_id'])
-        
-        # 需要处理的字段
-        columns_to_process = ['production_companies', 'production_countries', 'spoken_languages', 'genres']
-        split_data(metadata, columns_to_process)
+        metadata = pd.read_csv(filepath, low_memory=False, encoding='latin1')
+        metadata = clean_and_export_metadata(filepath, ['belongs_to_collection', 'homepage', 'tagline', 'video', 'adult', 'imdb_id'])
 
         # 提取poster_path和对应的id，写入另一个文件，并删除poster_path列
         extract_and_remove_column(metadata, 'poster_path', "./poster_path.csv")
 
-        new_column_order = ['id', 'title', 'original_title', 'genres','original_language','spoken_languages','overview','runtime','release_date','production_companies','production_countries','status','budget','revenue','popularity','vote_count','vote_average']
+        new_column_order = ['id', 'title', 'genres','original_language','overview','runtime','release_date','production_companies','production_countries','status','budget','revenue','popularity','vote_count','vote_average','original_title','spoken_languages']
 
         # 使用 reindex 方法重新排列列顺序
+        metadata = metadata.reset_index(drop=True)  # 重置索引，确保连续
         metadata = metadata.reindex(columns=new_column_order)
 
         # 根据 "id" 列的值进行升序排序
         metadata.sort_values(by='id', ascending=True, inplace=True)
-        metadata.to_csv(output_filepath, index=False)
+
+        # 需要处理的字段
+        # 提取json数据中需要的字符并用|分割
+        columns_to_process = ['genres']
+        
+        split_data(metadata, columns_to_process)
+        
+        
+        metadata.to_csv(output_filepath, encoding='utf-8', index=False)
+
     except Exception as e:
         print("An error occurred during data processing:", e)
 
@@ -104,7 +128,7 @@ def handle_credits(filepath, output_filepath):
         credits_df = pd.DataFrame({'id': credits['id'], 'director': director_list, 'actor': actor_list, 'character': character_list})
 
         # 将导演、演员和角色信息写入到新的 CSV 文件中
-        credits_df.to_csv(output_filepath, index=False)
+        credits_df.to_csv(output_filepath, encoding='utf-8', index=False)
 
     except Exception as e:
         print("An error occurred while handling credits.csv:", e)
@@ -124,27 +148,42 @@ def handle_keywords(filepath,output_filepath):
     keyword_df = pd.DataFrame(keyword_data)
 
     # 保存结果到新的CSV文件
-    keyword_df.to_csv(output_filepath, index=False)
+    keyword_df.to_csv(output_filepath, encoding='utf-8', index=False)
 
 # 将演员、导演数据合并到电影数据集里
 def concat_datasets(metadata_filepath, credits_filepath):
     try:
         # 读取 metadata 和 credits 数据集
-        metadata = pd.read_csv(metadata_filepath)
+        metadata = pd.read_csv(metadata_filepath,low_memory=False)
         handle_credits(credits_filepath, "./credits.csv")
         credits = pd.read_csv("./credits.csv")
 
         # 选择 credits 数据集中的 director、actor 和 character 列
-        credits_selected = credits[['id', 'director', 'actor', 'character']]
+        credits_selected = credits[['director', 'actor', 'character']]
 
         # 使用 concat 函数将 metadata 数据集和 credits 中选定的列堆叠在一起
         merged_data = pd.concat([metadata, credits_selected], axis=1)
 
         # 保存合并后的数据集到文件
-        merged_data.to_csv("./movies.csv", index=False)
+        merged_data.to_csv("./movies.csv", encoding='utf-8',index=False)
 
     except Exception as e:
         print("An error occurred while concatenating datasets:", e)
+
+# 将提取到的数据用'|'分隔并写入原csv文件
+def write_names_to_file(df, attributes):
+    try:
+        # 将提取的属性值写入原始 DataFrame 中相应的字段
+        for column, values in attributes.items():
+            names_column = f"{column}"
+            # print(names_column)
+            df[names_column] = values.apply(lambda x: '|'.join([entry['name'] for entry in x]) if isinstance(x, list) else '')
+
+        # 将修改后的 DataFrame 写回到文件中
+        df.to_csv("./movies.csv", index=False)
+
+    except Exception as e:
+        print(f"Error occurred while writing to file: {e}")
 
 if __name__ == "__main__":
     # 提取样本试验函数功能
@@ -152,8 +191,15 @@ if __name__ == "__main__":
 
     # 处理数据，删除多余字段，对一些字段值进行分割；并将处理后的数据写入原文件
     data_processing("../archive/movies_metadata.csv","./movies.csv")
-    # 将movies数据集与credits数据集合并
-    concat_datasets("./movies.csv","../archive/credits.csv")
+
     # 提取keywords，生成keywords数据集
     handle_keywords("../archive/keywords.csv","./keywords.csv")
+
+    # 将这三个字段的值进行分割处理，'production_countries', 'production_companies', 'spoken_languages'
+    df, attributes = extract_attributes("./movies.csv", ['production_countries', 'production_companies', 'spoken_languages'])
     
+    if df is not None and attributes is not None:
+        write_names_to_file(df, attributes)
+    
+    # 将movies数据集与credits数据集合并
+    concat_datasets("./movies.csv","../archive/credits.csv")
