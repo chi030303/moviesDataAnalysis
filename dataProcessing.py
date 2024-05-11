@@ -80,7 +80,8 @@ def data_processing(filepath, output_filepath):
         columns_to_process = ['genres']
         
         split_data(metadata, columns_to_process)
-        
+        # 发现有重复id数据，进行去重
+        metadata.drop_duplicates(subset=['id'], inplace=True)
         
         metadata.to_csv(output_filepath, encoding='utf-8', index=False)
 
